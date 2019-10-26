@@ -1,0 +1,160 @@
+<html>
+    <head>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.20.1/moment.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.1/Chart.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/google-palette@1.1.0/palette.min.js"></script>
+    </head>
+    <body>
+        <div class='halfwidth' style='width: 80vw;'>
+            <canvas id="KWChart"></canvas>
+        </div>
+        <div class='halfwidth' style='width: 80vw;'>
+            <canvas id="KWEmjChart"></canvas>
+        </div>
+        <div class='halfwidth' style='width: 80vw;'>
+            <canvas id="BPChart"></canvas>
+        </div>
+        <script>
+            async function getBPData() {
+                const response = await fetch('./back_pressure');
+                const data = await response.json();
+                const processed_data = data.data.map(function(val) {
+                        return {
+                            "x": new Date(val[0]),
+                            "y": val[1],
+                        }
+                    })
+                    .sort(function(a, b) {
+                        return b.x - a.x;
+                    });
+                console.log(processed_data);
+                return processed_data
+            }
+
+            async function getKFData() {
+                const response = await fetch('./keyword_frequency');
+                const data = await response.json();
+                console.log(data);
+                return data
+            }
+
+            async function updateBPData(chart) {
+                const processed_data = await getBPData();
+                chart.data.datasets[0].data = processed_data;
+                chart.update();
+                setTimeout(function () {
+                    updateBPData(chart);
+                }, 2200);
+            }
+
+            async function updateKFData(chart, chartEmj) {
+                const data = await getKFData();
+
+                chart.data.datasets[0].data = data.data;
+                chartEmj.data.datasets[0].data = data.emoji_data;
+
+                chart.update();
+                chartEmj.update();
+
+                setTimeout(function () {
+                    updateKFData(chart, chartEmj);
+                }, 2300);
+            }
+
+            async function displayBPData() {
+                const processed_data = await getBPData();
+
+                var ctx = document.getElementById('BPChart').getContext('2d');
+                var chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            data: processed_data,
+                            showLine: 'true',
+                        }]
+                    },
+                    options: {
+                        legend: { display: false },
+                        title: {
+                            display: true,
+                            text: 'Backpressure: Latency + TTP (Time to Process) of Each Tweet'
+                        },
+                        animation: {
+                            duration: 0,
+                        },
+                        scales: {
+                            xAxes: [{
+                                type: 'time',
+                                position: 'bottom',
+                            }],
+                            yAxes: [{
+                                ticks: {
+                                    min: 0,
+                                },
+                            }]
+                        },
+                    }
+                });
+                
+                updateBPData(chart);
+            }
+
+            async function displayKFData() {
+                const data = await getKFData();
+
+                var ctx = document.getElementById('KWChart').getContext('2d');
+                var chart = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        datasets: [{
+                            data: data.data,
+                            backgroundColor: palette('tol', data.labels.length).map(function(hex) {
+                                return '#' + hex;
+                            })
+                        }],
+                        labels: data.labels,
+                    },
+                    options: {
+                        title: {
+                            display: true,
+                            text: 'Distribution of Filtered Tweets Containing Each Keyword'
+                        },
+                    }
+                });
+
+                var ctxEmj = document.getElementById('KWEmjChart').getContext('2d');
+                var chartEmj = new Chart(ctxEmj, {
+                    type: 'horizontalBar',
+                    data: {
+                        datasets: [{
+                            data: data.emoji_data,
+                            backgroundColor: palette('tol', data.labels.length).map(function(hex) {
+                                return '#' + hex;
+                            })
+                        }],
+                        labels: data.labels,
+                    },
+                    options: {
+                        legend: { display: false },
+                        title: {
+                            display: true,
+                            text: 'Likelihood of Encountering Emoji in Tweet for Each Keyword'
+                        },
+                        scales: {
+                            yAxes: [{
+                                ticks: {
+                                    max: 1,
+                                },
+                            }]
+                        },
+                    }
+                });
+                
+                updateKFData(chart, chartEmj);
+            }
+            
+            displayBPData();
+            displayKFData();
+        </script>
+    </body>
+</html>
