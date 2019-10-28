@@ -5,6 +5,11 @@
 ```bash
 # build image
 docker build -t twitter-streams .
+# OR pull image (might be faster)
+docker login docker.pkg.github.com -u USERNAME -p TOKEN
+docker pull docker.pkg.github.com/akhilles/twitter-streams/twitter-streams:latest
+docker tag docker.pkg.github.com/akhilles/twitter-streams/twitter-streams:latest twitter-streams
+
 # run image w/ credentials injected via environment variables
 docker run -d --rm -p 8080:8080 -e TWITTER_API_KEY -e TWITTER_API_SECRET_KEY -e TWITTER_API_ACCESS_TOKEN -e TWITTER_API_ACCESS_TOKEN_SECRET twitter-streams
 ```
